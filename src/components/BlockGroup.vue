@@ -31,8 +31,8 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { blockType } from '../App.vue'
-import type { Block, Segment } from '../App.vue'
+import { blockType } from '@/dynamicListParser'
+import type { Block, Segment } from '@/dynamicListParser'
 import WordInput from './WordInput.vue';
 import BoolInput from './BoolInput.vue';
 
