@@ -61,8 +61,10 @@ watch(plainOutputValue, () => {
     <h1># list crafter</h1>
     <div>
       <PatternInput :value="patternInputValue" helper-text="" :on-input="processPatternInput" fit-width />
-      <Button label="Parse" :type="buttonTypes.filled" :action="processPattern" />
-      <Button label="Clear" :type="buttonTypes.filled" :action="() => {}" />
+      <div style="display: flex; flex-direction: row; gap: 8px;">
+        <Button label="Parse" :type="buttonTypes.filled" :action="processPattern" />
+        <Button label="Clear" :type="buttonTypes.filled" :action="() => {}" />
+      </div>
     </div>
   </header>
 
