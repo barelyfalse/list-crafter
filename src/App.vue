@@ -9,7 +9,7 @@ import PatternInput from './components/PatternInput.vue'
 import Button, { buttonTypes } from './components/Button.vue'
 import BlockGroup from './components/BlockGroup.vue'
 
-const patternInputValue = ref('{-w: "-w", -r}')
+const patternInputValue = ref('{-w: "-w",-n-r}')
 const parsedPattern = ref(createResult(true, true, 'Submit a pattern'))
 const plainOutputValue = ref('')
 const outputTextareaRef = ref(null)
