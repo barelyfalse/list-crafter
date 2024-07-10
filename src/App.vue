@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 
-import { blockType, createResult, dynamicListParser } from '@/dynamicListParser'
+import {
+  blockType,
+  parserModule,
+  createResult,
+  dynamicListParser,
+} from '@/dynamicListParser'
 import type { Segment, Block, ParseResult } from '@/dynamicListParser'
 
 import Container from './components/Container.vue'
@@ -20,7 +25,8 @@ function processPatternInput(pattern: string): void {
 
 function processPattern(): void {
   parsedPattern.value = dynamicListParser(
-    patternInputValue.value.replace(/\n/g, '-n')
+    patternInputValue.value.replace(/\n/g, '-n'),
+    []
   )
   //console.log(parsedPattern.value)
 }
@@ -75,10 +81,7 @@ watch(plainOutputValue, () => {
         fit-width
       />
       <div style="display: flex; flex-direction: row; gap: 8px">
-        <button-filled
-          label="Parse"
-          :action="processPattern"
-        />
+        <button-filled label="Parse" :action="processPattern" />
         <button-filled label="Clear" :action="() => {}" />
       </div>
     </div>

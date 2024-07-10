@@ -80,7 +80,22 @@ export const createResult = (
   root,
 })
 
-export function dynamicListParser(pattern: string): ParseResult {
+enum logType {
+  INFO = 'info',
+  WARN = 'warn',
+  ERROR = 'error',
+}
+
+enum parserModule {
+  SEGM = 'segm',
+  HIER = 'hier',
+  OTHER = 'other',
+}
+
+export function dynamicListParser(
+  pattern: string,
+  logModules: parserModule[] = []
+): ParseResult {
   // 1 character each
   const flagToken = '-'
   const wordToken = 'w'
@@ -116,9 +131,7 @@ export function dynamicListParser(pattern: string): ParseResult {
   const startersRx = new RegExp(`[${starterTokens}]`)
   const terminatorsRx = new RegExp(`[${terminatorTokens}]`)
 
-  const segLog = false
-
-  //console.log(`Pattern: ${pattern}`)
+  log(logType.INFO, parserModule.OTHER, pattern)
 
   let segments: Segment[] = []
 
@@ -135,23 +148,41 @@ export function dynamicListParser(pattern: string): ParseResult {
   let flagged = false
   let plainBuffer = ''
 
-  segLog && console.log('Segments processing')
+  /**
+   * Loggin function
+   */
+  function log(type: logType, module: parserModule, ...args: any[]) {
+    // TODO: add log level
+    if (logModules.includes(module)) {
+      console.log(`[${type.toUpperCase()}] [${module}]:`, ...args)
+    }
+  }
+
+  log(logType.INFO, parserModule.SEGM, 'Segments processing')
   for (let pI = 0; pI < pattern.length; pI++) {
     let c = createSegment(pattern[pI], blockType.plain, null, escaped)
 
-    segLog && console.log('---')
-    segLog && console.log(`Current, pI ${pI}: \"${c.raw}\"`)
+    log(logType.INFO, parserModule.SEGM, '---')
+    log(logType.INFO, parserModule.SEGM, `Current, pI ${pI}: \"${c.raw}\"`)
 
     // next token escaped?
     if (!escaped && c.raw == escapeToken) {
-      segLog && console.log(`Escape token, jumping to next iter`)
+      log(
+        logType.INFO,
+        parserModule.SEGM,
+        `Escape token, skipping to next iteration`
+      )
       escaped = true
       continue
     }
 
     // flag ahead?
     if (!escaped && c.raw == flagToken) {
-      segLog && console.log(`Flag token, jumping to next iter`)
+      log(
+        logType.INFO,
+        parserModule.SEGM,
+        `Flag token, skipping to next iteration`
+      )
       flagged = true
       continue
     }
@@ -162,14 +193,14 @@ export function dynamicListParser(pattern: string): ParseResult {
       groupStack.push({ start: c.raw, index: pI, segmentId: id })
       c.type = blockType.group
       c.segmentId = id
-      segLog && console.log(`Group starter, ${c.raw}`)
+      log(logType.INFO, parserModule.SEGM, `Group starter detected, ${c.raw}`)
     }
     if (!c.escaped && c.raw == logicGroupTokens.start) {
       const id = nextId()
       groupStack.push({ start: c.raw, index: pI, segmentId: id })
       c.type = blockType.logicGroup
       c.segmentId = id
-      segLog && console.log(`Opt starter`)
+      log(logType.INFO, parserModule.SEGM, `Logic group start detected`)
     }
 
     // match terminators
@@ -188,12 +219,12 @@ export function dynamicListParser(pattern: string): ParseResult {
         c.segmentId = lastGroupChar.segmentId
         c.type = blockType.group
         groupStack.pop()
-        segLog && console.log(`Terminator, ${c.raw}`)
+        log(logType.INFO, parserModule.SEGM, `Terminator detected, ${c.raw}`)
       } else if (lastGroupChar.start == logicGroupTokens.start) {
         c.segmentId = lastGroupChar.segmentId
         c.type = blockType.logicGroup
         groupStack.pop()
-        segLog && console.log(`Opt terminator`)
+        log(logType.INFO, parserModule.SEGM, `Logic group terminator detected`)
       } else {
         return createResult(
           true,
@@ -211,27 +242,27 @@ export function dynamicListParser(pattern: string): ParseResult {
           case wordToken:
             c.type = blockType.word
             c.raw = `${flagToken}${c.raw}`
-            segLog && console.log(`Word token`)
+            log(logType.INFO, parserModule.SEGM, `Word token detected`)
             break
           case digitToken:
             c.type = blockType.digit
             c.raw = `${flagToken}${c.raw}`
-            segLog && console.log(`Digit token`)
+            log(logType.INFO, parserModule.SEGM, `Digit token detected`)
             break
           case boolToken:
             c.type = blockType.bool
             c.raw = `${flagToken}${c.raw}`
-            segLog && console.log(`Bool token`)
+            log(logType.INFO, parserModule.SEGM, `Bool token detected`)
             break
           case lnToken:
             c.type = blockType.newline
             c.raw = `\n`
-            segLog && console.log(`New line token`)
+            log(logType.INFO, parserModule.SEGM, `New line token detected`)
             break
           case repToken:
             c.type = blockType.repetitive
             c.raw = `${flagToken}${c.raw}`
-            segLog && console.log(`Rep token`)
+            log(logType.INFO, parserModule.SEGM, `Repetition token detected`)
             break
         }
       }
@@ -240,35 +271,59 @@ export function dynamicListParser(pattern: string): ParseResult {
     // or
     if (!c.escaped && c.raw == orToken) {
       c.type = blockType.or
-      segLog && console.log(`Or token`)
+      log(logType.INFO, parserModule.SEGM, `OR token detected`)
     }
 
     // plain
     if (c.type == blockType.plain) {
       plainBuffer += c.raw
-      segLog && console.log('Plain to buffer')
+      log(
+        logType.INFO,
+        parserModule.SEGM,
+        `Plain appended to buffer, skipping to next iteration`
+      )
       if (escaped) escaped = false
       continue
     } else if (plainBuffer.length > 0) {
       segments.push(createSegment(plainBuffer, blockType.plain, null, false))
       plainBuffer = ''
-      segLog && console.log(`Plain end at ${pI - 1}`)
+      log(
+        logType.INFO,
+        parserModule.SEGM,
+        `pI not plain, appendig plain buffer segment`
+      )
     }
 
     escaped = false
     flagged = false
+    log(logType.INFO, parserModule.SEGM, `Appending segment`)
     segments.push(c)
   }
+
+  log(logType.INFO, parserModule.SEGM, `Segmentation iteration ended`)
+  log(logType.INFO, parserModule.SEGM, `---`)
 
   if (plainBuffer.length > 0) {
     segments.push(createSegment(plainBuffer, blockType.plain, null, false))
     plainBuffer = ''
-    segLog && console.log(`Plain buffer not empty`)
+    log(
+      logType.INFO,
+      parserModule.SEGM,
+      `Plain buffer not empty, appending last segment`
+    )
   }
 
   // TODO: autocomplete unclosed correct groups
   if (groupStack.length > 0) {
+    log(
+      logType.WARN,
+      parserModule.SEGM,
+      `Not properly closed groups!`,
+      segments
+    )
     return createResult(true, false, 'Not properly closed groups!')
+  } else {
+    log(logType.INFO, parserModule.SEGM, `All groups closed properly`)
   }
 
   for (let sI = 0; sI < segments.length; sI++) {
@@ -281,17 +336,27 @@ export function dynamicListParser(pattern: string): ParseResult {
         segments[sI + 1].raw == logicGroupTokens.end
       )
     ) {
-      return createResult(
-        true,
-        true,
-        `Repeat token set incorrectly! (segm:${sI})`
+      log(
+        logType.ERROR,
+        parserModule.SEGM,
+        `Repeat token set incorrectly! (segm:${sI})`,
+        segments
+      )
+      return createResult(true, true, `Repeat token set incorrectly!`)
+    } else if (segments[sI].type == blockType.repetitive) {
+      log(
+        logType.INFO,
+        parserModule.SEGM,
+        `Repetition token placed correctly (seg: ${sI})`
       )
     }
   }
 
-  segLog && console.log(segments)
+  log(logType.INFO, parserModule.SEGM, 'Segments', segments)
 
-  // returns first ocurrence of a type in segments
+  /**
+   * returns first ocurrence of a type in segments
+   */
   const typeWithinGroup = (
     segments: Segment[],
     segmentIndex: number,
@@ -308,34 +373,46 @@ export function dynamicListParser(pattern: string): ParseResult {
     return conincidenceIndex >= 0
   }
 
+  log(logType.INFO, parserModule.HIER, `Hierarchization process`)
+
   // hierarchy root
   let rootBlock = createBlock('', '', false, false, false, [])
-  const blockStack: Block[] = [rootBlock]
   // control variables
+  const blockStack: Block[] = [rootBlock]
   let inLogicGroup = false
   let currentOption: Block | null = null
 
+  // process each segment
   for (let sI = 0; sI < segments.length; sI++) {
+    log(logType.INFO, parserModule.HIER, `---`)
     const curS = segments[sI]
     const currentBlock = blockStack[blockStack.length - 1]
+    log(logType.INFO, parserModule.HIER, 'current segment', curS)
 
+    // segment a logic group?
     if (curS.type === blockType.logicGroup) {
+      log(logType.INFO, parserModule.HIER, 'Logic group detected')
+      // starting logic group?
       if (curS.raw === '<') {
+        log(logType.INFO, parserModule.HIER, 'Opening logic group')
+        // opening new group
         const newBlock = createBlock(
           '',
           '',
           false,
-          typeWithinGroup(segments, sI, blockType.or),
+          typeWithinGroup(segments, sI, blockType.or), // check if any or tokens inside the group
           false,
           []
         )
         currentBlock.children.push(newBlock)
         blockStack.push(newBlock)
+        // setting controls for new current
         inLogicGroup = true
         currentOption = createBlock('', '', false, false, true, [])
         newBlock.children.push(currentOption)
         blockStack.push(currentOption)
       } else if (curS.raw === '>') {
+        log(logType.INFO, parserModule.HIER, 'Closing logic group')
         while (
           blockStack.length > 1 &&
           !blockStack[blockStack.length - 1].options
@@ -350,6 +427,7 @@ export function dynamicListParser(pattern: string): ParseResult {
         currentOption = null
       }
     } else if (curS.type === blockType.or && inLogicGroup) {
+      log(logType.INFO, parserModule.HIER, `OR detected inside logic group`)
       while (
         blockStack.length > 2 &&
         !blockStack[blockStack.length - 2].options
@@ -362,27 +440,44 @@ export function dynamicListParser(pattern: string): ParseResult {
     } else if (curS.type === blockType.group) {
       if (startersRx.test(curS.raw)) {
         // ({[
+        log(logType.INFO, parserModule.HIER, 'Starting new group')
         const newBlock = createBlock(curS.raw, '', false, false, false, [])
         currentBlock.children.push(newBlock)
         blockStack.push(newBlock)
       } else if (terminatorsRx.test(curS.raw)) {
         // ]})
         if (blockStack.length > 1) {
+          log(
+            logType.INFO,
+            parserModule.HIER,
+            'Closing group, removing it from the stack'
+          )
           blockStack[blockStack.length - 1].end = curS.raw
           blockStack.pop()
         }
       }
     } else if (curS.type === blockType.repetitive) {
+      log(logType.INFO, parserModule.HIER, 'Setting repetitive block')
       currentBlock.repetitive = true
     } else {
+      log(logType.INFO, parserModule.HIER, 'Plain segment added')
       currentBlock.children.push(
         createSegment(curS.raw, curS.type, curS.segmentId, curS.escaped)
       )
     }
   }
 
+  /**
+   *
+   * @param item Block or Segment type
+   * @returns childrens if its block
+   */
+  function isBlock(item: Block | Segment): item is Block {
+    return 'children' in item
+  }
+
   function initializeBlock(block: Block): Block {
-    // Initialize children first
+    // children initialization
     block.children = block.children.map((child) => {
       if (isBlock(child)) {
         return initializeBlock({ ...child })
@@ -391,7 +486,7 @@ export function dynamicListParser(pattern: string): ParseResult {
       }
     })
 
-    // Then initialize values based on children
+    // values initialization
     block.values = block.children.map((child) => {
       if (isBlock(child)) {
         return initializeBlock({ ...child })
@@ -414,15 +509,12 @@ export function dynamicListParser(pattern: string): ParseResult {
         segment.value = false
         break
       default:
-        // For other types, we don't set a value
         break
     }
     return segment
   }
 
-  function isBlock(item: Block | Segment): item is Block {
-    return 'children' in item
-  }
+  log(logType.INFO, parserModule.HIER, 'Values initialized')
 
   rootBlock = initializeBlock(rootBlock)
 
