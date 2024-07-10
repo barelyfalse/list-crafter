@@ -2,8 +2,6 @@
 import { ref, watch, computed } from 'vue'
 
 import {
-  blockType,
-  parserModule,
   createResult,
   dynamicListParser,
 } from '@/dynamicListParser'
@@ -14,7 +12,7 @@ import PatternInput from './components/PatternInput.vue'
 import ButtonFilled from './components/ButtonFilled.vue'
 import BlockGroup from './components/BlockGroup.vue'
 
-const patternInputValue = ref('{-w: "-w",-n-r}')
+const patternInputValue = ref('{-w: <"-w"|-b>,-n-r}')
 const parsedPattern = ref(createResult(true, true, 'Submit a pattern'))
 const plainOutputValue = ref('')
 const outputTextareaRef = ref(null)
@@ -33,6 +31,7 @@ function processPattern(): void {
 
 function updateRootValues(newValues: any[]): void {
   if (parsedPattern.value.root) {
+    console.log(newValues)
     parsedPattern.value.root.values = newValues
     //console.log('Root values updated:', parsedPattern.value.root.values);
     plainOutputValue.value = renderPlainText(parsedPattern.value.root)
