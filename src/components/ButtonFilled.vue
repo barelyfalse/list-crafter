@@ -1,16 +1,16 @@
 <script setup lang="ts">
 const props = defineProps<{
-  label?:string;
-  action:Function;
+  label?: string
+  action: Function
 }>()
 
-function handleOnClick():void {
+function handleOnClick(): void {
   props.action()
 }
 </script>
 
 <template>
-  <button :class="props.type" @click="handleOnClick">
+  <button @click="handleOnClick">
     {{ label }}
   </button>
 </template>
