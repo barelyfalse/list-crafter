@@ -518,5 +518,7 @@ export function dynamicListParser(
 
   rootBlock = initializeBlock(rootBlock)
 
+  log(logType.INFO, parserModule.HIER, 'Hierarhy', rootBlock)
+
   return createResult(false, false, '', pattern, rootBlock)
 }
