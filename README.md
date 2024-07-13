@@ -1,5 +1,5 @@
 # list-crafter
-Pattern parser for list formating.
+Pattern parser for list formating. [Deployment](https://barelyfalse.github.io/list-crafter/)
 
 ## Instructions
 1. Write the pattern.
