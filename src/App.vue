@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 
-import { createResult, dynamicListParser } from '@/dynamicListParser'
+import { blockType, createResult, dynamicListParser } from '@/dynamicListParser'
 import type { Segment, Block, ParseResult } from '@/dynamicListParser'
 
 import Container from './components/Container.vue'
@@ -44,8 +44,16 @@ const renderPlainText = (block: Block): string => {
       if (isBlock(item)) {
         return `${item.start}${renderPlainText(item)}${item.end}`
       } else {
-        //console.log(item.value||item.raw)
-        return item.value || item.raw
+        switch(item.type) {
+          case blockType.plain:
+          case blockType.newline:
+            return item.raw
+          case blockType.word:
+          case blockType.digit:
+            return item.value
+          case blockType.bool:
+            return item.value
+        }
       }
     })
     .join('')
@@ -57,10 +65,8 @@ const plainTextOutput = computed(() => {
 
 watch(plainOutputValue, () => {
   if (outputTextareaRef.value) {
-    ;(outputTextareaRef.value as HTMLInputElement).style.height = 'auto'
-    ;(outputTextareaRef.value as HTMLInputElement).style.height = `${
-      (outputTextareaRef.value as HTMLInputElement).scrollHeight + 32
-    }px`
+    (outputTextareaRef.value as HTMLInputElement).style.height = 'auto';
+    (outputTextareaRef.value as HTMLInputElement).style.height = `${(outputTextareaRef.value as HTMLInputElement).scrollHeight + 32}px`;
   }
 })
 
