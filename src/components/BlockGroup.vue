@@ -1,5 +1,4 @@
 <template>
-  
   <div :class="`block ${props.block.options ? 'inline-options' : ''} ${props.block.start.length > 0 ? 'group-margins' : ''
     }`">
     <template v-if="
@@ -11,10 +10,8 @@
     " v-for="(child, index) in props.block.values" :key="index">
       <template v-if="isBlock(child)">
         <span class="top-edge" v-if="child.start.length > 0">{{ child.start }}</span>
-          <block-group  :block="child" @update:modelValue="updateValue(index, $event)" />
-        <span class="bottom-edge" v-if="child.end.length > 0">{{
-          child.end
-        }}</span>
+        <block-group  :block="child" @update:modelValue="updateValue(index, $event)" />
+        <span class="bottom-edge" v-if="child.end.length > 0">{{ child.end }}</span>
       </template>
       <word-input v-else-if="child.type === blockType.word" :model-value="getSegmentValue(index)"
         @update:modelValue="updateValue(index, $event)" />
@@ -167,9 +164,9 @@ const addOption = (option: Block | Segment) => {
 
 <style scoped lang="sass">
 .block
-  display: inline-block
+  display: inline
   &.inline-options
-    //display: block
+    display: block
   &.group-margins
     margin-left: 0ch
     margin-right: 0ch

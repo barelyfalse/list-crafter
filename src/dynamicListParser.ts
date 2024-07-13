@@ -469,7 +469,7 @@ export function dynamicListParser(
       blockStack.length
     )
 
-    if (startersRx.test(curSegm.raw)) {
+    if (curSegm.type === blockType.group && startersRx.test(curSegm.raw)) {
       log(logType.INFO, parserModule.HIER, `Group starter detected`)
       // create new Block
       // set start
@@ -478,13 +478,13 @@ export function dynamicListParser(
       const newGroup = createBlock(curSegm.raw, '', false, false, false, [], [])
       curBlock.children.push(newGroup)
       blockStack.push(newGroup)
-    } else if (terminatorsRx.test(curSegm.raw)) {
+    } else if (curSegm.type === blockType.group && terminatorsRx.test(curSegm.raw)) {
       log(logType.INFO, parserModule.HIER, `Group terminator detected`)
       // set end of curBlock
       // pop it from blockStack
       curBlock.end = curSegm.raw
       blockStack.pop()
-    } else if (curSegm.raw === logicGroupTokens.start) {
+    } else if (curSegm.type === blockType.logicGroup && curSegm.raw === logicGroupTokens.start) {
       log(logType.INFO, parserModule.HIER, `Logic group starter detected`)
       const orWithin = typeWithinGroup(segments, sI, blockType.or)
 
@@ -516,7 +516,7 @@ export function dynamicListParser(
         curBlock.children.push(newGroup)
         blockStack.push(newGroup)
       }
-    } else if (curSegm.raw === logicGroupTokens.end) {
+    } else if (curSegm.type === blockType.logicGroup && curSegm.raw === logicGroupTokens.end) {
       log(logType.INFO, parserModule.HIER, `Logic group terminator detected`)
       blockStack.pop()
       if (blockStack.length > 1 && blockStack[blockStack.length - 1].options) {
