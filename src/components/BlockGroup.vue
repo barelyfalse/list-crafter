@@ -10,10 +10,12 @@
     " v-for="(child, index) in props.block.values" :key="index">
       <template v-if="isBlock(child)">
         <span class="top-edge" v-if="child.start.length > 0">{{ child.start }}</span>
-        <block-group  :block="child" @update:modelValue="updateValue(index, $event)" />
+        <block-group :block="child" @update:modelValue="updateValue(index, $event)" />
         <span class="bottom-edge" v-if="child.end.length > 0">{{ child.end }}</span>
       </template>
       <word-input v-else-if="child.type === blockType.word" :model-value="getSegmentValue(index)"
+        @update:modelValue="updateValue(index, $event)" />
+      <digit-input v-else-if="child.type === blockType.digit" :model-value="getSegmentValue(index)"
         @update:modelValue="updateValue(index, $event)" />
       <bool-input v-else-if="child.type === blockType.bool" :model-value="getSegmentValue(index)"
         @update:modelValue="updateValue(index, $event)" />
@@ -29,11 +31,10 @@
           <block-group v-if="isBlock(option)" :block="option" @update:modelValue="updateValue(i, $event)" />
           <word-input v-else-if="option.type === blockType.word" :model-value="getSegmentValue(i)"
             @update:modelValue="updateValue(i, $event)" />
+          <digit-input v-else-if="option.type === blockType.digit" :model-value="getSegmentValue(i)"
+            @update:modelValue="updateValue(i, $event)" />
           <bool-input v-else-if="option.type === blockType.bool" :model-value="getSegmentValue(i)"
             @update:modelValue="updateValue(i, $event)" />
-          <!-- <span v-else-if="option.type === blockType.plain">{{
-            option.raw
-          }}</span> -->
           <template v-else-if="option.type === blockType.plain">
             <span>{{ option.raw }}</span>
           </template>
@@ -67,6 +68,7 @@ import { blockType } from '@/dynamicListParser'
 import type { Block, Segment } from '@/dynamicListParser'
 import WordInput from './WordInput.vue'
 import BoolInput from './BoolInput.vue'
+import DigitInput from './DigitInput.vue'
 
 const props = defineProps<{
   block: Block
