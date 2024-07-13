@@ -22,3 +22,8 @@ Pattern parser for list formating.
 - `{-w:<-w|-d|-b>, -r}`
 - `["-w", -r]`
 - `{-w: -w, -r}`
+
+## ToDo
+- Better plain text parsing
+- Store recent patterns
+- Reference
