@@ -106,8 +106,8 @@ const copyToClipboard = async (text: string) => {
     </Container>
     <br />
     <h2>## parsed list</h2>
-    <div>
-      <button @click="() => copyToClipboard(plainOutputValue)">copy</button>
+    <div class="parsed-list-actions">
+      <button class="copy-btn" @click="() => copyToClipboard(plainOutputValue)">copy</button>
     </div>
     <textarea
       class="plain-textarea"
@@ -136,6 +136,12 @@ const copyToClipboard = async (text: string) => {
   border-radius: 8px
   &:focus
     outline: none
+.parsed-list-actions
+  position: relative  
+  .copy-btn
+    position: absolute
+    right: 8px
+    top: 8px
 .footer
   color: var(--on-surface-variant)
   font-size: 0.8rem
