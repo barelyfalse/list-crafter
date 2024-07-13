@@ -1,10 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 
-import {
-  createResult,
-  dynamicListParser,
-} from '@/dynamicListParser'
+import { createResult, dynamicListParser } from '@/dynamicListParser'
 import type { Segment, Block, ParseResult } from '@/dynamicListParser'
 
 import Container from './components/Container.vue'
@@ -12,7 +9,7 @@ import PatternInput from './components/PatternInput.vue'
 import ButtonFilled from './components/ButtonFilled.vue'
 import BlockGroup from './components/BlockGroup.vue'
 
-const patternInputValue = ref('{-w: <"-w"|-b>,-n-r}')
+const patternInputValue = ref('(<a:<b|c>|d:<-w-r>>)')
 const parsedPattern = ref(createResult(true, true, 'Submit a pattern'))
 const plainOutputValue = ref('')
 const outputTextareaRef = ref(null)
@@ -23,15 +20,14 @@ function processPatternInput(pattern: string): void {
 
 function processPattern(): void {
   parsedPattern.value = dynamicListParser(
-    patternInputValue.value.replace(/\n/g, '-n'),
-    []
+    patternInputValue.value.replace(/\n/g, '-n')
   )
   //console.log(parsedPattern.value)
 }
 
 function updateRootValues(newValues: any[]): void {
   if (parsedPattern.value.root) {
-    console.log(newValues)
+    //console.log(newValues)
     parsedPattern.value.root.values = newValues
     //console.log('Root values updated:', parsedPattern.value.root.values);
     plainOutputValue.value = renderPlainText(parsedPattern.value.root)
@@ -67,6 +63,14 @@ watch(plainOutputValue, () => {
     }px`
   }
 })
+
+const copyToClipboard = async (text: string) => {
+  try {
+    await navigator.clipboard.writeText(text)
+  } catch (error) {
+    console.log(error)
+  }
+}
 </script>
 
 <template>
@@ -102,12 +106,16 @@ watch(plainOutputValue, () => {
     </Container>
     <br />
     <h2>## parsed list</h2>
+    <div>
+      <button @click="() => copyToClipboard(plainOutputValue)">copy</button>
+    </div>
     <textarea
       class="plain-textarea"
       ref="outputTextareaRef"
       v-model="plainOutputValue"
       readonly
     ></textarea>
+    <div class="footer">Made by barelyfalse</div>
   </main>
 </template>
 
@@ -128,4 +136,7 @@ watch(plainOutputValue, () => {
   border-radius: 8px
   &:focus
     outline: none
+.footer
+  color: var(--on-surface-variant)
+  font-size: 0.8rem
 </style>

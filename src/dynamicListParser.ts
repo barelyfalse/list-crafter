@@ -59,12 +59,30 @@ export const createSegment = (
   type: blockType,
   segmentId: number | null = null,
   escaped: boolean = false
-): Segment => ({
-  raw,
-  type,
-  segmentId,
-  escaped,
-})
+): Segment => {
+  let value: string | boolean | number | undefined
+
+  switch (type) {
+    case blockType.word:
+      value = ''
+      break
+    case blockType.digit:
+      value = 0
+      break
+    case blockType.bool:
+      value = false
+      break
+    // For other types, value remains undefined
+  }
+
+  return {
+    raw,
+    type,
+    segmentId,
+    escaped,
+    value,
+  }
+}
 
 export const createResult = (
   error: boolean = false,
@@ -355,116 +373,241 @@ export function dynamicListParser(
   log(logType.INFO, parserModule.SEGM, 'Segments', segments)
 
   /**
-   * returns first ocurrence of a type in segments
+   * returns true if there is an ocurrence of `type` inside
+   * groupIndex.segmentId group
    */
-  const typeWithinGroup = (
+  function typeWithinGroup(
     segments: Segment[],
-    segmentIndex: number,
+    groupIndex: number,
     type: blockType
-  ): boolean => {
-    const pairIndex = segments.findIndex(
-      (s, i) =>
-        s.segmentId == segments[segmentIndex].segmentId && i > segmentIndex
+  ): boolean {
+    log(
+      logType.INFO,
+      parserModule.HIER,
+      `Looking for type ${type} within group at segment ${groupIndex}`
     )
-    if (pairIndex < 0) return false
-    const conincidenceIndex = segments.findIndex(
-      (s, i) => s.type == type && i < pairIndex
-    )
-    return conincidenceIndex >= 0
+    const within = segments[groupIndex]
+    if (
+      within.type !== blockType.group &&
+      within.type !== blockType.logicGroup
+    ) {
+      // segment at groupIndex is not a group
+      log(
+        logType.WARN,
+        parserModule.HIER,
+        `Segment is not at group, can't search for type`
+      )
+      return false
+    }
+
+    for (let sI = groupIndex + 1; sI < segments.length; sI++) {
+      const segment = segments[sI]
+
+      if (segment.type === within.type) {
+        log(logType.INFO, parserModule.HIER, `Same group type found at  ${sI}`)
+        if (segment.segmentId === within.segmentId) {
+          // the group closed
+          log(
+            logType.INFO,
+            parserModule.HIER,
+            `Type ${type} not found in group`
+          )
+          return false
+        } else {
+          // new group
+          const pairIndex = segments.findIndex(
+            (s, i) => s.segmentId === segment.segmentId && i > sI
+          )
+
+          if (pairIndex < 0) {
+            log(
+              logType.WARN,
+              parserModule.HIER,
+              `Pair not found for group sI: ${sI} within group at segment ${groupIndex}`
+            )
+            return false // no closing segment
+          }
+          log(
+            logType.INFO,
+            parserModule.HIER,
+            `Pair of new group found at ${pairIndex}, skipping group at ${sI}`
+          )
+          // displace to the end of the found group
+          sI = pairIndex
+        }
+      } else {
+        // is another type
+        if (segment.type === type) {
+          // the type we are looking for
+          log(logType.INFO, parserModule.HIER, `type ${type} found at sI ${sI}`)
+          return true
+        }
+      }
+    }
+
+    // the type wasn't found
+    return false
   }
 
   log(logType.INFO, parserModule.HIER, `Hierarchization process`)
 
   // hierarchy root
-  let rootBlock = createBlock('', '', false, false, false, [])
+  let rootBlock = createBlock('', '', false, false, false, [], [])
   // control variables
   const blockStack: Block[] = [rootBlock]
-  let inLogicGroup = false
-  let currentOption: Block | null = null
 
-  // process each segment
   for (let sI = 0; sI < segments.length; sI++) {
     log(logType.INFO, parserModule.HIER, `---`)
-    const curS = segments[sI]
-    const currentBlock = blockStack[blockStack.length - 1]
-    log(logType.INFO, parserModule.HIER, 'current segment', curS)
+    const curSegm = segments[sI]
+    const curBlock = blockStack[blockStack.length - 1]
 
-    // segment a logic group?
-    if (curS.type === blockType.logicGroup) {
-      log(logType.INFO, parserModule.HIER, 'Logic group detected')
-      // starting logic group?
-      if (curS.raw === '<') {
-        log(logType.INFO, parserModule.HIER, 'Opening logic group')
-        // opening new group
-        const newBlock = createBlock(
-          '',
-          '',
-          false,
-          typeWithinGroup(segments, sI, blockType.or), // check if any or tokens inside the group
-          false,
-          []
-        )
-        currentBlock.children.push(newBlock)
-        blockStack.push(newBlock)
-        // setting controls for new current
-        inLogicGroup = true
-        currentOption = createBlock('', '', false, false, true, [])
-        newBlock.children.push(currentOption)
-        blockStack.push(currentOption)
-      } else if (curS.raw === '>') {
-        log(logType.INFO, parserModule.HIER, 'Closing logic group')
-        while (
-          blockStack.length > 1 &&
-          !blockStack[blockStack.length - 1].options
-        ) {
-          blockStack.pop()
-        }
-        if (blockStack.length > 1) {
-          //blockStack[blockStack.length - 1].end = curS.raw;
-          blockStack.pop()
-        }
-        inLogicGroup = false
-        currentOption = null
+    log(logType.INFO, parserModule.HIER, `Current sI ${sI}:`, curSegm)
+    log(
+      logType.INFO,
+      parserModule.HIER,
+      `Current stack count:`,
+      blockStack.length
+    )
+
+    if (startersRx.test(curSegm.raw)) {
+      log(logType.INFO, parserModule.HIER, `Group starter detected`)
+      // create new Block
+      // set start
+      // push Block as child of curBlock
+      // push Block to blockStack
+      const newGroup = createBlock(curSegm.raw, '', false, false, false, [], [])
+      curBlock.children.push(newGroup)
+      blockStack.push(newGroup)
+    } else if (terminatorsRx.test(curSegm.raw)) {
+      log(logType.INFO, parserModule.HIER, `Group terminator detected`)
+      // set end of curBlock
+      // pop it from blockStack
+      curBlock.end = curSegm.raw
+      blockStack.pop()
+    } else if (curSegm.raw === logicGroupTokens.start) {
+      log(logType.INFO, parserModule.HIER, `Logic group starter detected`)
+      const orWithin = typeWithinGroup(segments, sI, blockType.or)
+
+      if (orWithin) {
+        // this is an options group
+        log(logType.INFO, parserModule.HIER, `Creating a new options group`)
+        // create new options group
+        // push Block as child of curBlock
+        // push Block to blockStack
+        // create new option Block
+        // push Block to previous options group
+        // push Block to blockStack
+        const newGroup = createBlock('', '', false, true, false, [], [])
+        curBlock.children.push(newGroup)
+        blockStack.push(newGroup)
+
+        log(logType.INFO, parserModule.HIER, `Creating default option`)
+
+        const newOption = createBlock('', '', false, false, true, [], [])
+        newGroup.children.push(newOption)
+        blockStack.push(newOption)
+      } else {
+        // this is a normal logic group
+        log(logType.INFO, parserModule.HIER, `Creating basic logic group`)
+        // create new Block
+        // push Block as child of curBlock
+        // push Block to blockStack
+        const newGroup = createBlock('', '', false, false, false, [], [])
+        curBlock.children.push(newGroup)
+        blockStack.push(newGroup)
       }
-    } else if (curS.type === blockType.or && inLogicGroup) {
-      log(logType.INFO, parserModule.HIER, `OR detected inside logic group`)
-      while (
-        blockStack.length > 2 &&
-        !blockStack[blockStack.length - 2].options
-      ) {
+    } else if (curSegm.raw === logicGroupTokens.end) {
+      log(logType.INFO, parserModule.HIER, `Logic group terminator detected`)
+      blockStack.pop()
+      if (blockStack.length > 1 && blockStack[blockStack.length - 1].options) {
         blockStack.pop()
       }
-      currentOption = createBlock('', '', false, false, true, [])
-      blockStack[blockStack.length - 2].children.push(currentOption)
-      blockStack[blockStack.length - 1] = currentOption
-    } else if (curS.type === blockType.group) {
-      if (startersRx.test(curS.raw)) {
-        // ({[
-        log(logType.INFO, parserModule.HIER, 'Starting new group')
-        const newBlock = createBlock(curS.raw, '', false, false, false, [])
-        currentBlock.children.push(newBlock)
-        blockStack.push(newBlock)
-      } else if (terminatorsRx.test(curS.raw)) {
-        // ]})
-        if (blockStack.length > 1) {
+    } else {
+      switch (curSegm.type) {
+        case blockType.word:
+        case blockType.digit:
+        case blockType.bool:
           log(
             logType.INFO,
             parserModule.HIER,
-            'Closing group, removing it from the stack'
+            `Word, Digit or Bool token detected`
           )
-          blockStack[blockStack.length - 1].end = curS.raw
-          blockStack.pop()
-        }
+          curBlock.children.push(
+            createSegment(
+              curSegm.raw,
+              curSegm.type,
+              curSegm.segmentId,
+              curSegm.escaped
+            )
+          )
+          break
+        case blockType.or:
+          log(logType.INFO, parserModule.HIER, `OR token detected`)
+          // are there any viable tokens ahead?
+          if (
+            sI < segments.length - 1 &&
+            segments[sI + 1].raw !== logicGroupTokens.end
+          ) {
+            // pop previous option
+            // create new option
+            // push new option to the last options block
+            // push new option to blockstack
+            blockStack.pop()
+
+            log(logType.INFO, parserModule.HIER, `Creating new option`)
+            const newOption = createBlock('', '', false, false, true, [], [])
+
+            let stackI = blockStack.length - 1
+
+            while (stackI >= 0) {
+              if (stackI == 0)
+                return createResult(
+                  true,
+                  true,
+                  'Parent Options block could not be found'
+                )
+
+              if (blockStack[stackI].options) {
+                blockStack[stackI].children.push(newOption)
+                log(
+                  logType.INFO,
+                  parserModule.HIER,
+                  `Parent Options block found`
+                )
+                break
+              }
+              stackI--
+            }
+
+            blockStack.push(newOption)
+          } else {
+            log(logType.INFO, parserModule.HIER, `OR token ignored`)
+          }
+          break
+        case blockType.repetitive:
+          log(logType.INFO, parserModule.HIER, `Repetitive group detected`)
+          curBlock.repetitive = true
+          break
+        case blockType.plain:
+        case blockType.newline:
+          log(logType.INFO, parserModule.HIER, `Plain detected`)
+          curBlock.children.push(
+            createSegment(
+              curSegm.raw,
+              curSegm.type,
+              curSegm.segmentId,
+              curSegm.escaped
+            )
+          )
+          break
       }
-    } else if (curS.type === blockType.repetitive) {
-      log(logType.INFO, parserModule.HIER, 'Setting repetitive block')
-      currentBlock.repetitive = true
-    } else {
-      log(logType.INFO, parserModule.HIER, 'Plain segment added')
-      currentBlock.children.push(
-        createSegment(curS.raw, curS.type, curS.segmentId, curS.escaped)
-      )
     }
+    log(
+      logType.INFO,
+      parserModule.HIER,
+      `Current stack count after mutation:`,
+      blockStack.length
+    )
   }
 
   /**
@@ -514,9 +657,9 @@ export function dynamicListParser(
     return segment
   }
 
-  log(logType.INFO, parserModule.HIER, 'Values initialized')
-
   rootBlock = initializeBlock(rootBlock)
+
+  log(logType.INFO, parserModule.HIER, 'Values initialized')
 
   log(logType.INFO, parserModule.HIER, 'Hierarhy', rootBlock)
 

@@ -1,55 +1,45 @@
 <template>
-  <div :class="`block ${props.block.start.length > 0 ? 'group-margins' : ''}`">
-    <span class="top-edge" v-if="props.block.start">{{
-      props.block.start
-    }}</span>
-    <template
-      v-if="props.block && !props.block.options"
-      v-for="(child, index) in props.block.values"
-      :key="index"
-    >
-      <block-group
-        v-if="isBlock(child)"
-        :block="child"
-        @update:modelValue="updateValue(index, $event)"
-      />
-      <word-input
-        v-else-if="child.type === blockType.word"
-        :model-value="getSegmentValue(index)"
-        @update:modelValue="updateValue(index, $event)"
-      />
-      <bool-input
-        v-else-if="child.type === blockType.bool"
-        :model-value="getSegmentValue(index)"
-        @update:modelValue="updateValue(index, $event)"
-      />
+  
+  <div :class="`block ${props.block.options ? 'inline-options' : ''} ${props.block.start.length > 0 ? 'group-margins' : ''
+    }`">
+    <template v-if="
+      props.block &&
+      (!props.block.options ||
+        (props.block.options &&
+          props.block.values.length == 1 &&
+          props.block.children.length == 1))
+    " v-for="(child, index) in props.block.values" :key="index">
+      <template v-if="isBlock(child)">
+        <span class="top-edge" v-if="child.start.length > 0">{{ child.start }}</span>
+          <block-group  :block="child" @update:modelValue="updateValue(index, $event)" />
+        <span class="bottom-edge" v-if="child.end.length > 0">{{
+          child.end
+        }}</span>
+      </template>
+      <word-input v-else-if="child.type === blockType.word" :model-value="getSegmentValue(index)"
+        @update:modelValue="updateValue(index, $event)" />
+      <bool-input v-else-if="child.type === blockType.bool" :model-value="getSegmentValue(index)"
+        @update:modelValue="updateValue(index, $event)" />
       <div v-else-if="child.type === blockType.newline"></div>
       <!-- more types soon -->
-      <template v-else-if="child.type === blockType.plain"
-        ><span>{{ child.raw }}</span></template
-      >
+      <template v-else-if="child.type === blockType.plain">
+        <span>{{ child.raw }}</span>
+      </template>
     </template>
     <template v-else-if="props.block.options">
       <template v-if="props.block.values.length < props.block.children.length">
         <template v-for="(option, i) in props.block.values" :key="i">
-          <block-group
-            v-if="isBlock(option)"
-            :block="option"
-            @update:modelValue="updateValue(i, $event)"
-          />
-          <word-input
-            v-else-if="option.type === blockType.word"
-            :model-value="getSegmentValue(i)"
-            @update:modelValue="updateValue(i, $event)"
-          />
-          <bool-input
-            v-else-if="option.type === blockType.bool"
-            :model-value="getSegmentValue(i)"
-            @update:modelValue="updateValue(i, $event)"
-          />
-          <span v-else-if="option.type === blockType.plain">{{
+          <block-group v-if="isBlock(option)" :block="option" @update:modelValue="updateValue(i, $event)" />
+          <word-input v-else-if="option.type === blockType.word" :model-value="getSegmentValue(i)"
+            @update:modelValue="updateValue(i, $event)" />
+          <bool-input v-else-if="option.type === blockType.bool" :model-value="getSegmentValue(i)"
+            @update:modelValue="updateValue(i, $event)" />
+          <!-- <span v-else-if="option.type === blockType.plain">{{
             option.raw
-          }}</span>
+          }}</span> -->
+          <template v-else-if="option.type === blockType.plain">
+            <span>{{ option.raw }}</span>
+          </template>
         </template>
       </template>
       <template v-else>
@@ -61,27 +51,17 @@
       </template>
     </template>
 
-    <button
-      class="add-repetition-btn"
-      v-if="props.block.repetitive"
-      @click="addRepetition"
-    >
+    <button class="add-repetition-btn" v-if="props.block.repetitive" @click="addRepetition">
       add
     </button>
-    <button
-      class="add-repetition-btn"
-      v-if="
-        props.block.repetitive &&
-        props.block.values.length > props.block.children.length
-      "
-      @click="removeRepetition"
-    >
+    <button class="add-repetition-btn" v-if="
+      props.block.repetitive &&
+      props.block.values.length > props.block.children.length
+    " @click="removeRepetition">
       remove
     </button>
 
-    <span class="bottom-edge" v-if="props.block.end">{{
-      props.block.end
-    }}</span>
+    
   </div>
 </template>
 
@@ -115,9 +95,9 @@ const updateValue = (index: number, newValue: any) => {
     const updatedValues = [...props.block.values]
     //console.log(updatedValues)
     if (isBlock(updatedValues[index])) {
-      ;(updatedValues[index] as Block).values = newValue
+      ; (updatedValues[index] as Block).values = newValue
     } else {
-      ;(updatedValues[index] as Segment).value = newValue
+      ; (updatedValues[index] as Segment).value = newValue
     }
     emit('update:modelValue', updatedValues)
   } else {
@@ -148,7 +128,7 @@ const removeRepetition = () => {
 function extractString(data: (Block | Segment)[]): string {
   let result = ''
 
-  function process(item: Block | Segment): void {
+  /* function process(item: Block | Segment): void {
     if ('raw' in item) {
       result += item.raw
     } else if ('start' in item && 'end' in item) {
@@ -162,6 +142,16 @@ function extractString(data: (Block | Segment)[]): string {
       })
       result += item.end
     }
+  } */
+
+  function process(item: Block | Segment): void {
+    if ('raw' in item) {
+      result += item.raw;
+    } else if ('start' in item && 'end' in item) {
+      result += item.start;
+      item.children.forEach(child => process(child));
+      result += item.end;
+    }
   }
 
   data.forEach((item) => process(item))
@@ -170,7 +160,6 @@ function extractString(data: (Block | Segment)[]): string {
 
 const addOption = (option: Block | Segment) => {
   if (props.block) {
-    console.log('adding', [option])
     emit('update:modelValue', [option])
   }
 }
@@ -178,11 +167,12 @@ const addOption = (option: Block | Segment) => {
 
 <style scoped lang="sass">
 .block
-  position: relative
-  &.inline
+  display: inline-block
+  &.inline-options
+    //display: block
   &.group-margins
-    margin-left: 1ch
-    margin-right: 1ch
+    margin-left: 0ch
+    margin-right: 0ch
 .add-repetition-btn
   background-color: var(--primary)
   color: var(--on-primary)
